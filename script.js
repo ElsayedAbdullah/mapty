@@ -68,12 +68,19 @@ const inputElevation = document.querySelector('.form__input--elevation');
 */
 class App {
   #map;
+  #zoomMapLevel = 13;
   #mapEvent;
   #workouts = [];
   constructor() {
+    // get user's position
     this._getPosition();
+
+    // get data from localStorage
+    this._getLocalStorage();
+    // Event handlers
     form.addEventListener('submit', this._newWorkout.bind(this));
     inputType.addEventListener('change', this._toggleElevationField);
+    containerWorkouts.addEventListener('click', this._moveToPopup.bind(this));
   }
 
   _getPosition() {
@@ -91,7 +98,7 @@ class App {
     const { latitude } = position.coords;
     const { longitude } = position.coords;
     const coords = [latitude, longitude];
-    this.#map = L.map('map').setView(coords, 13);
+    this.#map = L.map('map').setView(coords, this.#zoomMapLevel);
 
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution:
@@ -99,6 +106,8 @@ class App {
     }).addTo(this.#map);
 
     this.#map.on('click', this._showForm.bind(this));
+
+    this.#workouts.forEach(work => this._renderWorkoutMarker(work));
   }
 
   _showForm(mapE) {
@@ -182,6 +191,9 @@ class App {
 
     // Hide Form + Clear Fields
     this._hideForm();
+
+    // set local storage to all workouts
+    this._setLocalStorage();
   }
 
   // render workout marker
@@ -254,6 +266,40 @@ class App {
     }
 
     containerWorkouts.insertAdjacentHTML('afterbegin', html);
+  }
+
+  // move to popup
+  _moveToPopup(e) {
+    const workoutEl = e.target.closest('.workout');
+
+    const workout = this.#workouts.find(
+      work => work.id === workoutEl.dataset.id
+    );
+
+    console.log(workout);
+    this.#map.setView(workout.coords, this.#zoomMapLevel, {
+      animate: true,
+      pan: {
+        duration: 1,
+      },
+    });
+  }
+
+  _setLocalStorage() {
+    localStorage.setItem('workouts', JSON.stringify(this.#workouts));
+  }
+
+  _getLocalStorage() {
+    const data = JSON.parse(localStorage.getItem('workouts'));
+    if (!data) return;
+    this.#workouts = data;
+
+    this.#workouts.forEach(work => this._renderWorkout(work));
+  }
+
+  reset() {
+    localStorage.removeItem('workouts');
+    location.reload();
   }
 }
 
